@@ -31,7 +31,10 @@ while [ "$#" -gt "0" ]; do
 done
 
 # Если в параметрах нет i или install, вызываем оригинальный npm
-[[ $INSTALL == "false" ]] && $NPM $ARGUMENTS && exit 0
+if [[ $INSTALL == "false" ]]; then
+  $NPM $ARGUMENTS
+  exit $?
+fi
 
 echo "==> Running npm wrapper script with node_modules caching"
 
@@ -62,9 +65,11 @@ else
   echo "==> Executing: $NPM $ARGUMENTS"
   $NPM $ARGUMENTS
 
-  if [[ $? -ne 0 ]]; then
+  NPM_EXIT_CODE=$?
+  
+  if [[ $NPM_EXIT_CODE -ne 0 ]]; then
     echo "Something went wrong!"
-    exit 1
+    exit $NPM_EXIT_CODE
   fi
 
   echo "==> Creating $CACHE_DIR"
