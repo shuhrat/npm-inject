@@ -38,6 +38,24 @@ fi
 
 echo "==> Running npm wrapper script with node_modules caching"
 
+#Если существует переменная времени жизни кэша, то ищем просроченные кэши
+#Время жизни указывается в днях в переменно $NPM_CACHE_EXPIRE_TIME
+if [[ -n ${NPM_CACHE_EXPIRE_TIME} ]]; then
+  echo "Looking for expired cache"
+
+  NPM_CACHE_DIR="$HOME/.cache/npm-inject"
+  EXPIRED_DIRS=$(find $NPM_CACHE_DIR -maxdepth 1 -mtime +$NPM_CACHE_EXPIRE_TIME ! -path $NPM_CACHE_DIR -type d | tr \\n ' ')
+
+  if [[ -n $EXPIRED_DIRS ]]; then
+    for EXPIRED_DIR in $EXPIRED_DIRS; do
+      echo "Clear expired cache: $EXPIRED_DIR"
+      rm -r $EXPIRED_DIR
+    done
+  else
+    echo "No expired cache found"
+  fi
+fi
+
 SHRINKWRAP="$PWD/npm-shrinkwrap.json"
 PACKAGE_DEPS="${PWD}/package.json"
 
@@ -86,3 +104,4 @@ else
   echo "Linking $CACHE_DIR/node_modules to $NODE_MODULES"
   ln -s "$CACHE_DIR/node_modules" "$NODE_MODULES"
 fi
+
