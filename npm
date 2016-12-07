@@ -20,6 +20,7 @@ set -e
 INSTALL="false"
 ARGUMENTS=$@
 NPM=$(which -a npm | sed -n 2p) # Ищем оригинальный npm
+CACHE_DIR="$HOME/.cache/npm-inject"
 
 while [ "$#" -gt "0" ]; do
   case $1 in
@@ -43,8 +44,8 @@ echo "==> Running npm wrapper script with node_modules caching"
 if [[ -n ${NPM_CACHE_EXPIRE_DAYS} ]]; then
   echo "Looking for expired cache"
 
-  NPM_CACHE_DIR="$HOME/.cache/npm-inject"
-  EXPIRED_DIRS=$(find $NPM_CACHE_DIR -maxdepth 1 -mtime +$NPM_CACHE_EXPIRE_DAYS ! -path $NPM_CACHE_DIR -type d)
+  CACHE_DIR="$HOME/.cache/npm-inject"
+  EXPIRED_DIRS=$(find $CACHE_DIR -maxdepth 1 -mtime +$NPM_CACHE_EXPIRE_DAYS ! -path $CACHE_DIR -type d)
 
   if [[ -n $EXPIRED_DIRS ]]; then
     for EXPIRED_DIR in $EXPIRED_DIRS; do
@@ -67,15 +68,15 @@ PACKAGES_HASH=$(openssl sha1 $PACKAGE_DEPS | awk '{print $2}')
 echo "sha1 of $PACKAGE_DEPS is $PACKAGES_HASH"
 
 NODE_MODULES="$PWD/node_modules"
-CACHE_DIR="$HOME/.cache/npm-inject/$PACKAGES_HASH"
+PACKAGES_CACHE_DIR="$CACHE_DIR/$PACKAGES_HASH"
 
 # Удаляем существующие модули, могли протухнуть
 echo "Removing existing node_modules if any"
 rm -rf "$NODE_MODULES"
 
 # Если существует кэш, слинковать его в $NODE_MODULES
-if [[ -d $CACHE_DIR ]]; then
-  echo "Cache found: $CACHE_DIR"
+if [[ -d $PACKAGES_CACHE_DIR ]]; then
+  echo "Cache found: $PACKAGES_CACHE_DIR"
 else
   echo "Cache not found"
 
@@ -90,17 +91,17 @@ else
     exit $NPM_EXIT_CODE
   fi
 
-  echo "==> Creating $CACHE_DIR"
-  mkdir -p "$CACHE_DIR"
+  echo "==> Creating $PACKAGES_CACHE_DIR"
+  mkdir -p "$PACKAGES_CACHE_DIR"
 
   echo "Caching $NODE_MODULES"
-  mv "$NODE_MODULES" "$CACHE_DIR"
+  mv "$NODE_MODULES" "$PACKAGES_CACHE_DIR"
 fi
 
 if [[ -n ${NPM_INJECT_COPY} ]]; then
-  echo "Copying $CACHE_DIR/node_modules to $NODE_MODULES"
-  cp -RP "$CACHE_DIR/node_modules" "$NODE_MODULES"
+  echo "Copying $PACKAGES_CACHE_DIR/node_modules to $NODE_MODULES"
+  cp -RP "$PACKAGES_CACHE_DIR/node_modules" "$NODE_MODULES"
 else
-  echo "Linking $CACHE_DIR/node_modules to $NODE_MODULES"
-  ln -s "$CACHE_DIR/node_modules" "$NODE_MODULES"
+  echo "Linking $PACKAGES_CACHE_DIR/node_modules to $NODE_MODULES"
+  ln -s "$PACKAGES_CACHE_DIR/node_modules" "$NODE_MODULES"
 fi
