@@ -39,12 +39,12 @@ fi
 echo "==> Running npm wrapper script with node_modules caching"
 
 #Если существует переменная времени жизни кэша, то ищем просроченные кэши
-#Время жизни указывается в днях в переменно $NPM_CACHE_EXPIRE_TIME
-if [[ -n ${NPM_CACHE_EXPIRE_TIME} ]]; then
+#Время жизни указывается в днях в переменно $NPM_CACHE_EXPIRE_DAYS
+if [[ -n ${NPM_CACHE_EXPIRE_DAYS} ]]; then
   echo "Looking for expired cache"
 
   NPM_CACHE_DIR="$HOME/.cache/npm-inject"
-  EXPIRED_DIRS=$(find $NPM_CACHE_DIR -maxdepth 1 -mtime +$NPM_CACHE_EXPIRE_TIME ! -path $NPM_CACHE_DIR -type d | tr \\n ' ')
+  EXPIRED_DIRS=$(find $NPM_CACHE_DIR -maxdepth 1 -mtime +$NPM_CACHE_EXPIRE_DAYS ! -path $NPM_CACHE_DIR -type d)
 
   if [[ -n $EXPIRED_DIRS ]]; then
     for EXPIRED_DIR in $EXPIRED_DIRS; do
@@ -104,4 +104,3 @@ else
   echo "Linking $CACHE_DIR/node_modules to $NODE_MODULES"
   ln -s "$CACHE_DIR/node_modules" "$NODE_MODULES"
 fi
-
