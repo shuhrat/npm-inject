@@ -12,6 +12,10 @@
 #
 # Если указать переменную окружения NPM_INJECT_COPY=1, то вместо симлинка кэш будет скопирован.
 #
+# При указании времени жизни кэша в переменную окружения $NPM_CACHE_EXPIRE_DAYS
+# кэш будет удаляться после истечения срока жизни.
+# Время жизни кэша указывается в днях.
+#
 # @author Shuhrat Shadmonkulov <zumra6a@yandex-team.ru>
 
 set -e
@@ -39,8 +43,7 @@ fi
 
 echo "==> Running npm wrapper script with node_modules caching"
 
-#Если существует переменная времени жизни кэша, то ищем просроченные кэши
-#Время жизни указывается в днях в переменно $NPM_CACHE_EXPIRE_DAYS
+# Если существует переменная времени жизни кэша, то ищем просроченные кэши
 if [[ -n ${NPM_CACHE_EXPIRE_DAYS} ]]; then
   echo "Looking for expired cache"
 
