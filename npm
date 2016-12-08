@@ -47,7 +47,6 @@ echo "==> Running npm wrapper script with node_modules caching"
 if [[ -n ${NPM_CACHE_EXPIRE_DAYS} ]]; then
   echo "Looking for expired cache"
 
-  CACHE_DIR="$HOME/.cache/npm-inject"
   EXPIRED_DIRS=$(find $CACHE_DIR -maxdepth 1 -mtime +$NPM_CACHE_EXPIRE_DAYS ! -path $CACHE_DIR -type d)
 
   if [[ -n $EXPIRED_DIRS ]]; then
