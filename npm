@@ -41,8 +41,8 @@ while [ "$#" -gt "0" ]; do
 done
 
 # Если в параметрах нет i или install, вызываем оригинальный npm
-if [[ $INSTALL == "false" ]]; then
-  $NPM $ARGUMENTS
+if [[ ${INSTALL} == "false" ]]; then
+  ${NPM} ${ARGUMENTS}
   exit $?
 fi
 
@@ -52,63 +52,63 @@ echo "==> Running npm wrapper script with node_modules caching"
 if [[ -n ${NPM_CACHE_EXPIRE_DAYS} ]]; then
   echo "Looking for expired cache"
 
-  EXPIRED_DIRS=$(find ${NPM_INJECT_CACHE_DIR} -maxdepth 1 -mtime +$NPM_CACHE_EXPIRE_DAYS ! -path ${NPM_INJECT_CACHE_DIR} -type d)
+  EXPIRED_DIRS=$(find ${NPM_INJECT_CACHE_DIR} -maxdepth 1 -mtime +${NPM_CACHE_EXPIRE_DAYS} ! -path ${NPM_INJECT_CACHE_DIR} -type d)
 
-  if [[ -n $EXPIRED_DIRS ]]; then
-    for EXPIRED_DIR in $EXPIRED_DIRS; do
-      echo "Clear expired cache: $EXPIRED_DIR"
-      rm -rf "$EXPIRED_DIR"
+  if [[ -n ${EXPIRED_DIRS} ]]; then
+    for EXPIRED_DIR in ${EXPIRED_DIRS}; do
+      echo "Clear expired cache: ${EXPIRED_DIR}"
+      rm -rf "${EXPIRED_DIR}"
     done
   else
     echo "No expired cache found"
   fi
 fi
 
-SHRINKWRAP="$PWD/npm-shrinkwrap.json"
+SHRINKWRAP="${PWD}/npm-shrinkwrap.json"
 PACKAGE_DEPS="${PWD}/package.json"
 
-if [[ -f $SHRINKWRAP ]]; then
-    PACKAGE_DEPS=$SHRINKWRAP
+if [[ -f ${SHRINKWRAP} ]]; then
+    PACKAGE_DEPS=${SHRINKWRAP}
 fi
 
-PACKAGES_HASH=$(openssl sha1 $PACKAGE_DEPS | awk '{print $2}')
-echo "sha1 of $PACKAGE_DEPS is $PACKAGES_HASH"
+PACKAGES_HASH=$(openssl sha1 ${PACKAGE_DEPS} | awk '{print $2}')
+echo "sha1 of ${PACKAGE_DEPS} is ${PACKAGES_HASH}"
 
-NODE_MODULES="$PWD/node_modules"
-PACKAGES_CACHE_DIR="${NPM_INJECT_CACHE_DIR}/${NODE_VERSION}-${NODE_ENV}/$PACKAGES_HASH"
+NODE_MODULES="${PWD}/node_modules"
+PACKAGES_CACHE_DIR="${NPM_INJECT_CACHE_DIR}/${NODE_VERSION}-${NODE_ENV}/${PACKAGES_HASH}"
 
 # Удаляем существующие модули, могли протухнуть
 echo "Removing existing node_modules if any"
-rm -rf "$NODE_MODULES"
+rm -rf "${NODE_MODULES}"
 
 # Если существует кэш, слинковать его в $NODE_MODULES
-if [[ -d $PACKAGES_CACHE_DIR ]]; then
-  echo "Cache found: $PACKAGES_CACHE_DIR"
+if [[ -d ${PACKAGES_CACHE_DIR} ]]; then
+  echo "Cache found: ${PACKAGES_CACHE_DIR}"
 else
   echo "Cache not found"
 
   # Вызываем оригинальный npm
-  echo "==> Executing: $NPM $ARGUMENTS"
-  $NPM $ARGUMENTS
+  echo "==> Executing: ${NPM} ${ARGUMENTS}"
+  ${NPM} ${ARGUMENTS}
 
   NPM_EXIT_CODE=$?
-  
-  if [[ $NPM_EXIT_CODE -ne 0 ]]; then
+
+  if [[ ${NPM_EXIT_CODE} -ne 0 ]]; then
     echo "Something went wrong!"
-    exit $NPM_EXIT_CODE
+    exit ${NPM_EXIT_CODE}
   fi
 
-  echo "==> Creating $PACKAGES_CACHE_DIR"
-  mkdir -p "$PACKAGES_CACHE_DIR"
+  echo "==> Creating ${PACKAGES_CACHE_DIR}"
+  mkdir -p "${PACKAGES_CACHE_DIR}"
 
-  echo "Caching $NODE_MODULES"
-  mv "$NODE_MODULES" "$PACKAGES_CACHE_DIR"
+  echo "Caching ${NODE_MODULES}"
+  mv "${NODE_MODULES}" "${PACKAGES_CACHE_DIR}"
 fi
 
 if [[ -n ${NPM_INJECT_COPY} ]]; then
-  echo "Copying $PACKAGES_CACHE_DIR/node_modules to $NODE_MODULES"
-  cp -RP "$PACKAGES_CACHE_DIR/node_modules" "$NODE_MODULES"
+  echo "Copying ${PACKAGES_CACHE_DIR}/node_modules to ${NODE_MODULES}"
+  cp -RP "${PACKAGES_CACHE_DIR}/node_modules" "${NODE_MODULES}"
 else
-  echo "Linking $PACKAGES_CACHE_DIR/node_modules to $NODE_MODULES"
-  ln -s "$PACKAGES_CACHE_DIR/node_modules" "$NODE_MODULES"
+  echo "Linking ${PACKAGES_CACHE_DIR}/node_modules to ${NODE_MODULES}"
+  ln -s "${PACKAGES_CACHE_DIR}/node_modules" "${NODE_MODULES}"
 fi
