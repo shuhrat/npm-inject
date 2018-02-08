@@ -24,7 +24,12 @@ set -e
 INSTALL="false"
 ARGUMENTS=$@
 NPM=$(which -a npm | sed -n 2p) # Ищем оригинальный npm
-CACHE_DIR="$HOME/.cache/npm-inject"
+
+: ${NPM_INJECT_CACHE_DIR:=${HOME}/.cache/npm-inject}
+: ${NODE_VERSION:=$(node --version)}
+# Если NODE_ENV=production, npm не установит модули из devDependencies.
+# https://docs.npmjs.com/cli/install
+: ${NODE_ENV:=development}
 
 while [ "$#" -gt "0" ]; do
   case $1 in
@@ -47,7 +52,7 @@ echo "==> Running npm wrapper script with node_modules caching"
 if [[ -n ${NPM_CACHE_EXPIRE_DAYS} ]]; then
   echo "Looking for expired cache"
 
-  EXPIRED_DIRS=$(find $CACHE_DIR -maxdepth 1 -mtime +$NPM_CACHE_EXPIRE_DAYS ! -path $CACHE_DIR -type d)
+  EXPIRED_DIRS=$(find ${NPM_INJECT_CACHE_DIR} -maxdepth 1 -mtime +$NPM_CACHE_EXPIRE_DAYS ! -path ${NPM_INJECT_CACHE_DIR} -type d)
 
   if [[ -n $EXPIRED_DIRS ]]; then
     for EXPIRED_DIR in $EXPIRED_DIRS; do
@@ -70,7 +75,7 @@ PACKAGES_HASH=$(openssl sha1 $PACKAGE_DEPS | awk '{print $2}')
 echo "sha1 of $PACKAGE_DEPS is $PACKAGES_HASH"
 
 NODE_MODULES="$PWD/node_modules"
-PACKAGES_CACHE_DIR="$CACHE_DIR/$PACKAGES_HASH"
+PACKAGES_CACHE_DIR="${NPM_INJECT_CACHE_DIR}/${NODE_VERSION}-${NODE_ENV}/$PACKAGES_HASH"
 
 # Удаляем существующие модули, могли протухнуть
 echo "Removing existing node_modules if any"
