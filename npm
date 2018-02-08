@@ -2,21 +2,33 @@
 
 # Фейковый npm
 # Нужен для кэширования папки node_modules
-# Кэш находится в папке ~/.cache/npm-inject/[sha1 хэш файла package.json]/node_modules
-# 
-# В PATH надо добавить путь папки с фейковым npm, таким образом при выполнении команды `npm install` 
+# Кэш находится в папке ~/.cache/npm-inject/[версия node]-[окружение node]/[sha1 хэш файла package.json]/node_modules
+#
+# В PATH надо добавить путь папки с фейковым npm, таким образом при выполнении команды `npm install`
 # bash вызовет фейковый npm c параметром `install`.
-# Фейк проверяет наличие папки [sha1 хэш файла package.json] в кэше.
-# Если она в кэше, создаем на неё симлинк node_modules 
+# Фейк проверяет наличие папки [sha1 хэш файла package.json] в кэше. При наличии `package-lock.json` или `npm-shrinkwrap.json` хэш будет вычислен от этого файла, вместо `package.json`.
+# Если она в кэше, создаем на неё симлинк node_modules
 # Иначе вызываем оригинальный npm (вторая позиция в `which -a npm`), копируем node_modules в кэш
 #
 # Если указать переменную окружения NPM_INJECT_COPY=1, то вместо симлинка кэш будет скопирован.
+#
+# Важно: при использовании мягких зависимостей в `package.json` и `package-lock.json` файла команда `npm install` может изменить `package-lock.json` файл, указав более свежие зависимости.
+# В этом случае кэш будет записан для обновлённого `package-lock.json`. Это означает, что при исходном `package-lock.json` файле с устаревшими зависимостями кэш не будет использован.
+# Из-за такого поведения `npm install` рекомендуем указывать точные зависимости `package.json` файле.
 #
 # При указании времени жизни кэша в переменную окружения $NPM_CACHE_EXPIRE_DAYS
 # кэш будет удаляться после истечения срока жизни.
 # Время жизни кэша указывается в днях.
 #
 # @author Shuhrat Shadmonkulov <zumra6a@yandex-team.ru>
+
+function file_sha() {
+    echo $(openssl sha1 $1 | awk '{print $2}')
+}
+
+function cache_dir() {
+    echo "${NPM_INJECT_CACHE_DIR}/${NODE_VERSION}-${NODE_ENV}/$1"
+}
 
 set -e
 [[ -n ${DEBUG} ]] && set -x
@@ -64,6 +76,7 @@ if [[ -n ${NPM_CACHE_EXPIRE_DAYS} ]]; then
   fi
 fi
 
+PACKAGE_LOCK="${PWD}/package-lock.json"
 SHRINKWRAP="${PWD}/npm-shrinkwrap.json"
 PACKAGE_DEPS="${PWD}/package.json"
 
@@ -71,11 +84,15 @@ if [[ -f ${SHRINKWRAP} ]]; then
     PACKAGE_DEPS=${SHRINKWRAP}
 fi
 
-PACKAGES_HASH=$(openssl sha1 ${PACKAGE_DEPS} | awk '{print $2}')
+if [[ -f ${PACKAGE_LOCK} ]]; then
+    PACKAGE_DEPS=${PACKAGE_LOCK}
+fi
+
+PACKAGES_HASH=$(file_sha ${PACKAGE_DEPS})
 echo "sha1 of ${PACKAGE_DEPS} is ${PACKAGES_HASH}"
 
 NODE_MODULES="${PWD}/node_modules"
-PACKAGES_CACHE_DIR="${NPM_INJECT_CACHE_DIR}/${NODE_VERSION}-${NODE_ENV}/${PACKAGES_HASH}"
+PACKAGES_CACHE_DIR=$(cache_dir ${PACKAGES_HASH})
 
 # Удаляем существующие модули, могли протухнуть
 echo "Removing existing node_modules if any"
@@ -96,6 +113,15 @@ else
   if [[ ${NPM_EXIT_CODE} -ne 0 ]]; then
     echo "Something went wrong!"
     exit ${NPM_EXIT_CODE}
+  fi
+
+  # npm i может изменить файл package-lock.json во время установки из-за мягких зависимостей
+  INSTALLED_PACKAGES_HASH=$(file_sha ${PACKAGE_DEPS})
+
+  if [[ ${PACKAGES_HASH} != ${INSTALLED_PACKAGES_HASH} ]]; then
+    echo "${PACKAGE_DEPS} was changed during installation"
+    echo "changed sha1 of ${PACKAGE_DEPS} is ${INSTALLED_PACKAGES_HASH}"
+    PACKAGES_CACHE_DIR=$(cache_dir ${INSTALLED_PACKAGES_HASH})
   fi
 
   echo "==> Creating ${PACKAGES_CACHE_DIR}"
